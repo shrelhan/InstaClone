@@ -5,6 +5,13 @@
     <title>InstaClone</title>
 </head>
 <body>
-  TODO: MAKE THE FEEDS PAGE
+{% csrf_token %}
+  {% for post in posts %}
+
+    <h3> Posted by: {{ post.user.username }}</h3>
+    <img src="{{ post.image_url }}">
+    <span>{{ post.caption }}</span>
+
+  {% endfor %}
 </body>
 </html>

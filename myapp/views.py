@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-from models import UserModel, SessionToken
-from django.shortcuts import render
+from models import UserModel, SessionToken, PostModel
+from django.shortcuts import render, redirect
 from datetime import datetime
-from forms import SignUpForm, LoginForm
+from forms import SignUpForm, LoginForm, PostForm
 from django.contrib.auth.hashers import make_password, check_password
+from imgurpython import ImgurClient
+from InstaClone.settings import BASE_DIR
 
 
 # Create your views here.
@@ -56,7 +58,12 @@ def login_view(request):
 
 
 def feed_view(request):
-    return render(request, 'feed.html')
+    user = check_validation(request)
+    if user:
+        posts = PostModel.objects.all().order_by('created_on')
+        return render(request, 'feed.html', {'posts': posts})
+    else:
+        return redirect('/login/')
 
 
 # For validating the session
@@ -67,3 +74,30 @@ def check_validation(request):
             return session.user
     else:
         return None
+
+CLIENT_ID = 'a8aa2277a419d2e'
+CLIENT_SECRET = '48058116a0e1f2abccfa16ca4237550fe4529bcc'
+def post_view(request):
+    user = check_validation(request)
+
+    if user:
+
+        if request.method == 'POST':
+            form = PostForm(request.POST, request.FILES)
+            if form.is_valid():
+                image = form.cleaned_data.get('image')
+                caption = form.cleaned_data.get('caption')
+                post = PostModel(user=user, image=image, caption=caption)
+                post.save()
+
+                path = str(BASE_DIR + '\\' + post.image.url)
+                client = ImgurClient(CLIENT_ID, CLIENT_SECRET)
+                post.image_url = client.upload_from_path(path, anon=True)['link']
+                post.save()
+                return redirect('/feed/')
+
+        else:
+            form = PostForm()
+        return render(request, 'post.html', {'form': form})
+    else:
+        return redirect('/login/')
